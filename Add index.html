@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Churn Tracker — JamboLive TH</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #E24B4A; --red-bg: #FCEBEB; --red-border: #F09595; --red-text: #791F1F;
+    --amber: #BA7517; --amber-bg: #FAEEDA; --amber-border: #FAC775; --amber-text: #633806;
+    --teal: #0F6E56; --teal-bg: #E1F5EE; --teal-border: #5DCAA5; --teal-text: #085041;
+    --blue: #185FA5; --blue-bg: #E6F1FB; --blue-border: #85B7EB; --blue-text: #0C447C;
+    --coral: #993C1D; --coral-bg: #FAECE7; --coral-border: #F0997B; --coral-text: #712B13;
+    --gray: #5F5E5A; --gray-bg: #F1EFE8; --gray-border: #B4B2A9; --gray-text: #2C2C2A;
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --border: #E8E6E0;
+    --text: #1A1A18;
+    --text-muted: #888780;
+    --font: 'IBM Plex Sans Thai', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; position: sticky; top: 0; z-index: 100; }
+  .header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 32px; height: 32px; background: var(--text); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 18px; height: 18px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; }
+  .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+  .week-chip { font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 99px; background: var(--blue-bg); color: var(--blue-text); border: 1px solid var(--blue-border); }
+  .sync-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gray-border); }
+  .sync-dot.ok { background: var(--teal); }
+  .sync-dot.loading { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 24px 60px; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .sum-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+  .sum-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .sum-value { font-size: 26px; font-weight: 600; line-height: 1; }
+  .sum-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .sum-card.c-red .sum-value { color: var(--red); }
+  .sum-card.c-amber .sum-value { color: var(--amber); }
+  .sum-card.c-teal .sum-value { color: var(--teal); }
+
+  .progress-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .progress-track { flex: 1; height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--teal); border-radius: 99px; transition: width 0.4s ease; }
+  .progress-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-btn { font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; color: var(--text-muted); transition: all 0.15s; white-space: nowrap; }
+  .filter-btn:hover { border-color: var(--gray-border); color: var(--text); }
+  .filter-btn.active { color: var(--text); border-color: var(--text); background: var(--text); color: white; }
+  .filter-btn.f-high.active { background: var(--red-bg); color: var(--red-text); border-color: var(--red-border); }
+  .filter-btn.f-mid.active { background: var(--amber-bg); color: var(--amber-text); border-color: var(--amber-border); }
+  .filter-btn.f-low.active { background: var(--gray-bg); color: var(--gray-text); border-color: var(--gray-border); }
+  .filter-btn.f-done.active { background: var(--teal-bg); color: var(--teal-text); border-color: var(--teal-border); }
+  .search-box { flex: 1; min-width: 200px; position: relative; }
+  .search-box input { width: 100%; padding: 7px 12px 7px 34px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); background: var(--surface); color: var(--text); outline: none; }
+  .search-box input:focus { border-color: var(--gray-border); }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; pointer-events: none; }
+
+  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  col.c-num { width: 40px; }
+  col.c-id { width: 110px; }
+  col.c-name { width: auto; }
+  col.c-orders { width: 72px; }
+  col.c-amt { width: 88px; }
+  col.c-pri { width: 68px; }
+  col.c-status { width: 140px; }
+  col.c-note { width: 160px; }
+  col.c-who { width: 90px; }
+  thead th { background: var(--bg); padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.4px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg); }
+  tbody tr.is-done { opacity: 0.5; }
+  tbody tr.is-back td { background: #f0fdf7; }
+  td { padding: 10px 12px; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .num-cell { color: var(--text-muted); font-size: 11px; text-align: center; }
+  .id-cell { font-family: var(--mono); font-size: 10.5px; color: var(--text-muted); }
+  .name-cell { font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  .name-cell.pri-high { color: var(--text); }
+  .orders-cell { text-align: right; color: var(--text-muted); font-family: var(--mono); font-size: 12px; }
+  .amt-cell { text-align: right; font-weight: 600; font-family: var(--mono); font-size: 12px; }
+  .pri-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+  .pri-high { background: var(--red-bg); color: var(--red-text); border: 1px solid var(--red-border); }
+  .pri-mid { background: var(--amber-bg); color: var(--amber-text); border: 1px solid var(--amber-border); }
+  .pri-low { background: var(--gray-bg); color: var(--gray-text); border: 1px solid var(--gray-border); }
+
+  select.status-sel { font-size: 12px; font-family: var(--font); padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); width: 100%; cursor: pointer; outline: none; }
+  select.status-sel:focus { border-color: var(--gray-border); }
+  select.s-pending { color: var(--text-muted); }
+  select.s-called { background: var(--blue-bg); color: var(--blue-text); border-color: var(--blue-border); }
+  select.s-noanswer { background: var(--amber-bg); color: var(--amber-text); border-color: var(--amber-border); }
+  select.s-back { background: var(--teal-bg); color: var(--teal-text); border-color: var(--teal-border); }
+  select.s-rejected { background: var(--coral-bg); color: var(--coral-text); border-color: var(--coral-border); }
+
+  input.note-inp { font-size: 12px; font-family: var(--font); padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid transparent; background: transparent; color: var(--text); width: 100%; outline: none; }
+  input.note-inp:hover { border-color: var(--border); background: var(--surface); }
+  input.note-inp:focus { border-color: var(--gray-border); background: var(--surface); }
+
+  select.who-sel { font-size: 12px; font-family: var(--font); padding: 4px 6px; border-radius: var(--radius-sm); border: 1px solid transparent; background: transparent; color: var(--text-muted); width: 100%; cursor: pointer; outline: none; }
+  select.who-sel:hover { border-color: var(--border); background: var(--surface); }
+  select.who-sel.assigned { color: var(--text); font-weight: 500; }
+
+  .saving-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 99px; background: var(--amber-bg); color: var(--amber-text); margin-left: 4px; vertical-align: middle; }
+
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 32px; margin-bottom: 8px; }
+
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 999; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--text); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text-muted); }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: white; font-size: 13px; padding: 10px 16px; border-radius: var(--radius); z-index: 9999; transform: translateY(80px); opacity: 0; transition: all 0.25s ease; pointer-events: none; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--red); }
+
+  @media (max-width: 768px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    col.c-id, col.c-orders, col.c-who { width: 0; display: none; }
+    .id-cell, .orders-cell, .who-cell { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loader">
+  <div class="spinner"></div>
+  <div class="loading-text">กำลังโหลดข้อมูลจาก Google Sheet...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div>
+        <div class="logo-text">Churn Tracker</div>
+        <div class="logo-sub">JamboLive Thailand</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="sync-status">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">กำลังเชื่อมต่อ...</span>
+      </div>
+      <div class="week-chip">W16 · 19 เม.ย. 2569</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="summary-grid" id="summary-grid">
+    <div class="sum-card"><div class="sum-label">ร้านทั้งหมด</div><div class="sum-value" id="s-total">—</div><div class="sum-sub" id="s-amt">—</div></div>
+    <div class="sum-card c-red"><div class="sum-label">ระดับสูง</div><div class="sum-value" id="s-high">—</div><div class="sum-sub" id="s-high-amt">—</div></div>
+    <div class="sum-card c-amber"><div class="sum-label">ระดับกลาง</div><div class="sum-value" id="s-mid">—</div><div class="sum-sub" id="s-mid-amt">—</div></div>
+    <div class="sum-card c-teal"><div class="sum-label">ติดตามแล้ว</div><div class="sum-value" id="s-done">—</div><div class="sum-sub" id="s-done-pct">—</div></div>
+  </div>
+
+  <div class="progress-row">
+    <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="progress-label" id="prog-label">—</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="filter-btn f-all active" onclick="setFilter('all')">ทั้งหมด</button>
+    <button class="filter-btn f-high" onclick="setFilter('high')">🔴 สูง</button>
+    <button class="filter-btn f-mid" onclick="setFilter('mid')">🟡 กลาง</button>
+    <button class="filter-btn f-low" onclick="setFilter('low')">⚪ ต่ำ</button>
+    <button class="filter-btn f-done" onclick="setFilter('done')">ติดตามแล้ว</button>
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="ค้นหาร้านค้า / รหัสลูกค้า..." oninput="setSearch(this.value)" />
+    </div>
+  </div>
+
+  <div class="table-card">
+    <table>
+      <colgroup>
+        <col class="c-num"><col class="c-id"><col class="c-name">
+        <col class="c-orders"><col class="c-amt"><col class="c-pri">
+        <col class="c-status"><col class="c-note"><col class="c-who">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>#</th><th>รหัส</th><th>ชื่อร้าน</th>
+          <th style="text-align:right">ออเดอร์</th>
+          <th style="text-align:right">ยอด มี.ค.</th>
+          <th>ระดับ</th><th>สถานะ</th><th>หมายเหตุ</th><th>ผู้รับผิดชอบ</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+const GAS_URL = 'https://script.google.com/a/macros/jambolive.tv/s/AKfycbwIG0Rj6zatQ6z7bLAX7qhSX7zm4nwS6BNWaC46-Ydt2eusRyShPXY2mqKZOyoPwxo/exec';
+
+const SEED = [
+  {client_id:'T0000580600',shop_name:'กุหลาบทุ่งเศรษฐี จังหวัดบึงกาฬ',priority:'high',orders:491,amount:17088600},
+  {client_id:'T0000685100',shop_name:'ชัดเจนพันธุ์ข้าว',priority:'high',orders:29,amount:5720000},
+  {client_id:'T0000276400',shop_name:'Multytester',priority:'high',orders:321,amount:5607600},
+  {client_id:'T0001053400',shop_name:'ศุกร์ on sale',priority:'mid',orders:35,amount:3543200},
+  {client_id:'T0000644800',shop_name:'ของเล่นเสริมพัฒนาการ แม่และเด็ก. มือสองญี่ปุ่น',priority:'mid',orders:454,amount:3060600},
+  {client_id:'T0001067300',shop_name:'ช่างสั้นมีดกรีดยาง',priority:'mid',orders:53,amount:2280700},
+  {client_id:'T0001170600',shop_name:'Kookai Kook',priority:'mid',orders:2,amount:1998000},
+  {client_id:'T0000736200',shop_name:'PremShop99 เสื้อผ้าแฟชั่น งานป้าย ผ้าไทย',priority:'mid',orders:600,amount:1653400},
+  {client_id:'T0001145400',shop_name:'Family Rose Garden',priority:'mid',orders:31,amount:1428300},
+  {client_id:'T0000424600',shop_name:'Tip Shop รองเท้ามือสอง',priority:'mid',orders:68,amount:1039200},
+  {client_id:'T0000948200',shop_name:'Bestie Store - เสื้อผ้ามือสองยกกระสอบ',priority:'low',orders:18,amount:845600},
+  {client_id:'T0000479400',shop_name:'พรพรบิวตี้ช๊อป/Ging_Ps',priority:'low',orders:19,amount:250400},
+  {client_id:'T0000551900',shop_name:'P.Audio Thailand',priority:'low',orders:1,amount:226400},
+  {client_id:'T0001136000',shop_name:'กระเป๋าอินเทรนด์',priority:'low',orders:2,amount:78000},
+  {client_id:'T0001170400',shop_name:'เสื้อลายสก็อต Kkshop.96',priority:'low',orders:5,amount:47500},
+  {client_id:'T0000720700',shop_name:'ต้นข้าวออร์คิดส์ กล้วยไม้ขายปลีก-ส่ง',priority:'low',orders:5,amount:40000},
+  {client_id:'T0001036800',shop_name:'Punyaphas Kids Shop',priority:'low',orders:8,amount:25100},
+];
+
+const TEAM = ['—','น้องA','น้องB','น้องC','น้องD'];
+const STATUS_OPTS = [
+  {val:'pending',label:'รอติดตาม'},
+  {val:'called',label:'โทรแล้ว'},
+  {val:'noanswer',label:'ไม่รับสาย'},
+  {val:'back',label:'กลับมาแล้ว'},
+  {val:'rejected',label:'ปฏิเสธ'},
+];
+
+let data = {};
+let currentFilter = 'all';
+let currentSearch = '';
+let saveTimers = {};
+let refreshTimer = null;
+
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  dot.className = 'sync-dot ' + (state === 'ok' ? 'ok' : state === 'loading' ? 'loading' : 'error');
+  document.getElementById('sync-label').textContent = label;
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = 'toast', 2500);
+}
+
+function fmt(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return Math.round(n/1000) + 'K';
+  return n.toLocaleString();
+}
+
+async function loadFromSheet() {
+  setSyncStatus('loading', 'กำลังโหลด...');
+  try {
+    const res = await fetch(GAS_URL);
+    const rows = await res.json();
+    // rows is array of {client_id, shop_name, priority, orders, amount, status, note, updated_at}
+    rows.forEach(r => {
+      if (r.client_id) {
+        data[r.client_id] = {
+          status: r.status || 'pending',
+          note: r.note || '',
+          assign: r.assign || '',
+        };
+      }
+    });
+    // seed any missing
+    SEED.forEach(s => { if (!data[s.client_id]) data[s.client_id] = {status:'pending',note:'',assign:''}; });
+    setSyncStatus('ok', 'ซิงค์แล้ว ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'}));
+    document.getElementById('loader').style.display = 'none';
+    updateSummary();
+    render();
+  } catch(e) {
+    setSyncStatus('error', 'เชื่อมต่อไม่ได้');
+    SEED.forEach(s => { if (!data[s.client_id]) data[s.client_id] = {status:'pending',note:'',assign:''}; });
+    document.getElementById('loader').style.display = 'none';
+    updateSummary();
+    render();
+    showToast('ไม่สามารถโหลดจาก Sheet ได้ — ใช้ข้อมูล offline', true);
+  }
+}
+
+async function saveRow(client_id) {
+  const seed = SEED.find(s => s.client_id === client_id);
+  if (!seed) return;
+  const d = data[client_id];
+  const payload = {
+    client_id,
+    shop_name: seed.shop_name,
+    priority: seed.priority,
+    orders: seed.orders,
+    amount: seed.amount,
+    status: d.status,
+    note: d.note,
+    assign: d.assign,
+  };
+  setSyncStatus('loading', 'กำลังบันทึก...');
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    setSyncStatus('ok', 'บันทึกแล้ว ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'}));
+    showToast('บันทึกแล้ว');
+  } catch(e) {
+    setSyncStatus('error', 'บันทึกไม่สำเร็จ');
+    showToast('บันทึกไม่สำเร็จ กรุณาลองใหม่', true);
+  }
+}
+
+function debounceSave(id, delay = 800) {
+  clearTimeout(saveTimers[id]);
+  saveTimers[id] = setTimeout(() => saveRow(id), delay);
+}
+
+function updateSummary() {
+  const total = SEED.length;
+  const high = SEED.filter(s => s.priority === 'high');
+  const mid = SEED.filter(s => s.priority === 'mid');
+  const done = SEED.filter(s => data[s.client_id] && data[s.client_id].status !== 'pending').length;
+  const totalAmt = SEED.reduce((a,s) => a+s.amount, 0);
+  const pct = Math.round(done/total*100);
+
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-amt').textContent = 'รวม ' + fmt(totalAmt) + ' บาท';
+  document.getElementById('s-high').textContent = high.length;
+  document.getElementById('s-high-amt').textContent = fmt(high.reduce((a,s)=>a+s.amount,0)) + ' บาท';
+  document.getElementById('s-mid').textContent = mid.length;
+  document.getElementById('s-mid-amt').textContent = fmt(mid.reduce((a,s)=>a+s.amount,0)) + ' บาท';
+  document.getElementById('s-done').textContent = done;
+  document.getElementById('s-done-pct').textContent = pct + '% ของทั้งหมด';
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = 'ติดตามแล้ว ' + done + '/' + total + ' ร้าน';
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.f-' + f).classList.add('active');
+  render();
+}
+function setSearch(v) { currentSearch = v.toLowerCase(); render(); }
+
+function onStatusChange(id, val) {
+  data[id].status = val;
+  updateSummary();
+  render();
+  debounceSave(id, 300);
+}
+function onNoteChange(id, val) {
+  data[id].note = val;
+  debounceSave(id, 1200);
+}
+function onAssignChange(id, val) {
+  data[id].assign = val;
+  debounceSave(id, 300);
+}
+
+function priLabel(p) {
+  if (p === 'high') return '<span class="pri-badge pri-high">สูง</span>';
+  if (p === 'mid') return '<span class="pri-badge pri-mid">กลาง</span>';
+  return '<span class="pri-badge pri-low">ต่ำ</span>';
+}
+
+function render() {
+  let rows = [...SEED];
+  if (currentFilter === 'high') rows = rows.filter(r => r.priority === 'high');
+  else if (currentFilter === 'mid') rows = rows.filter(r => r.priority === 'mid');
+  else if (currentFilter === 'low') rows = rows.filter(r => r.priority === 'low');
+  else if (currentFilter === 'done') rows = rows.filter(r => data[r.client_id] && data[r.client_id].status !== 'pending');
+  if (currentSearch) rows = rows.filter(r =>
+    r.shop_name.toLowerCase().includes(currentSearch) ||
+    r.client_id.toLowerCase().includes(currentSearch)
+  );
+
+  const tbody = document.getElementById('tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">🔍</div>ไม่พบร้านค้าที่ตรงกับเงื่อนไข</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map((r, i) => {
+    const d = data[r.client_id] || {status:'pending',note:'',assign:''};
+    const isDone = d.status !== 'pending';
+    const isBack = d.status === 'back';
+    const statusOpts = STATUS_OPTS.map(o =>
+      `<option value="${o.val}" ${d.status===o.val?'selected':''}>${o.label}</option>`
+    ).join('');
+    const teamOpts = TEAM.map(t =>
+      `<option value="${t}" ${(d.assign||'—')===t?'selected':''}>${t}</option>`
+    ).join('');
+    const assignedClass = d.assign && d.assign !== '—' ? 'assigned' : '';
+    return `<tr class="${isDone?'is-done':''} ${isBack?'is-back':''}">
+      <td class="num-cell">${i+1}</td>
+      <td class="id-cell">${r.client_id}</td>
+      <td class="name-cell ${r.priority==='high'?'pri-high':''}" title="${r.shop_name}">${r.shop_name}</td>
+      <td class="orders-cell">${r.orders.toLocaleString()}</td>
+      <td class="amt-cell">${fmt(r.amount)}</td>
+      <td>${priLabel(r.priority)}</td>
+      <td>
+        <select class="status-sel s-${d.status}"
+          onchange="onStatusChange('${r.client_id}',this.value);this.className='status-sel s-'+this.value">
+          ${statusOpts}
+        </select>
+      </td>
+      <td><input class="note-inp" type="text" value="${(d.note||'').replace(/"/g,'&quot;')}" placeholder="หมายเหตุ..." onchange="onNoteChange('${r.client_id}',this.value)" /></td>
+      <td class="who-cell"><select class="who-sel ${assignedClass}" onchange="onAssignChange('${r.client_id}',this.value);this.className='who-sel'+(this.value!=='—'?' assigned':'')">
+        ${teamOpts}
+      </select></td>
+    </tr>`;
+  }).join('');
+}
+
+// Auto-refresh every 30 seconds to sync teammates' changes
+function startAutoRefresh() {
+  refreshTimer = setInterval(async () => {
+    try {
+      const res = await fetch(GAS_URL);
+      const rows = await res.json();
+      rows.forEach(r => {
+        if (r.client_id) {
+          data[r.client_id] = { status: r.status||'pending', note: r.note||'', assign: r.assign||'' };
+        }
+      });
+      setSyncStatus('ok', 'ซิงค์ ' + new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}));
+      updateSummary();
+      render();
+    } catch(e) { setSyncStatus('error', 'ออฟไลน์'); }
+  }, 30000);
+}
+
+loadFromSheet().then(startAutoRefresh);
+</script>
+</body>
+</html>
